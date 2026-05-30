@@ -2118,73 +2118,53 @@ class Media3VideoView(
 
     private fun inferStreamMimeType(url: String, container: String?, mediaType: String?): String? {
         val normalizedMediaType = mediaType?.trim()?.lowercase()
+        val normalizedUrl = url.lowercase()
+
+        when {
+            normalizedUrl.startsWith("rtsp://") -> return MimeTypes.APPLICATION_RTSP
+            normalizedUrl.contains(".m3u8") -> return MimeTypes.APPLICATION_M3U8
+            normalizedUrl.contains(".mpd") -> return MimeTypes.APPLICATION_MPD
+            normalizedUrl.contains(".ism") || normalizedUrl.contains(".isml") -> return MimeTypes.APPLICATION_SS
+        }
+
         val containerTokens = container
             ?.split(',', ';', '|', ' ')
             ?.mapNotNull { token -> token.trim().lowercase().takeIf { it.isNotEmpty() } }
             ?: emptyList()
-        var resolvedMimeType: String? = null
 
         for (token in containerTokens) {
-            if (token == "hls" || token == "m3u8") {
-                resolvedMimeType = MimeTypes.APPLICATION_M3U8
-                break
+            when (token) {
+                "hls", "m3u8" -> return MimeTypes.APPLICATION_M3U8
+                "dash", "mpd" -> return MimeTypes.APPLICATION_MPD
+                "ss", "smoothstreaming", "ism" -> return MimeTypes.APPLICATION_SS
+                "rtsp" -> return MimeTypes.APPLICATION_RTSP
             }
-            if (token == "dash" || token == "mpd") {
-                resolvedMimeType = MimeTypes.APPLICATION_MPD
-                break
-            }
-            if (token == "ss" || token == "smoothstreaming" || token == "ism") {
-                resolvedMimeType = MimeTypes.APPLICATION_SS
-                break
-            }
-            if (token == "rtsp") {
-                resolvedMimeType = MimeTypes.APPLICATION_RTSP
-                break
-            }
-
-            val inferredMimeType = inferAudioMimeType(token, normalizedMediaType)
-            if (inferredMimeType != null) {
-                resolvedMimeType = inferredMimeType
-                break
-            }
-
-            resolvedMimeType = inferVideoMimeType(token, normalizedMediaType)
-            if (resolvedMimeType != null) {
-                break
-            }
+            inferAudioMimeType(token, normalizedMediaType)?.let { return it }
+            inferVideoMimeType(token, normalizedMediaType)?.let { return it }
         }
 
-        if (resolvedMimeType == null) {
-            val normalizedUrl = url.lowercase()
-            resolvedMimeType = when {
-                normalizedUrl.startsWith("rtsp://") -> MimeTypes.APPLICATION_RTSP
-                normalizedUrl.contains(".m3u8") -> MimeTypes.APPLICATION_M3U8
-                normalizedUrl.contains(".mpd") -> MimeTypes.APPLICATION_MPD
-                normalizedUrl.contains(".ism") || normalizedUrl.contains(".isml") -> MimeTypes.APPLICATION_SS
-                normalizedUrl.contains(".mkv") -> MimeTypes.VIDEO_MATROSKA
-                normalizedUrl.contains(".webm") -> MimeTypes.VIDEO_WEBM
-                normalizedUrl.contains(".mov") -> MimeTypes.VIDEO_QUICK_TIME
-                normalizedUrl.contains(".mp4") || normalizedUrl.contains(".m4v") -> MimeTypes.VIDEO_MP4
-                normalizedUrl.contains(".avi") -> MimeTypes.VIDEO_AVI
-                normalizedUrl.contains(".flv") -> MimeTypes.VIDEO_FLV
-                normalizedUrl.contains(".ts") || normalizedUrl.contains(".m2ts") || normalizedUrl.contains(".mts") -> MimeTypes.VIDEO_MP2T
-                normalizedUrl.contains(".mpg") || normalizedUrl.contains(".mpeg") -> MimeTypes.VIDEO_MPEG
-                normalizedUrl.contains(".ogv") -> MimeTypes.VIDEO_OGG
-                normalizedUrl.contains(".flac") -> MimeTypes.AUDIO_FLAC
-                normalizedUrl.contains(".mp3") -> MimeTypes.AUDIO_MPEG
-                normalizedUrl.contains(".m4a") || normalizedUrl.contains(".aac") -> MimeTypes.AUDIO_AAC
-                normalizedUrl.contains(".opus") -> MimeTypes.AUDIO_OPUS
-                normalizedUrl.contains(".ogg") || normalizedUrl.contains(".oga") -> MimeTypes.AUDIO_OGG
-                normalizedUrl.contains(".wav") || normalizedUrl.contains(".wave") -> MimeTypes.AUDIO_WAV
-                normalizedUrl.contains(".ac3") -> MimeTypes.AUDIO_AC3
-                normalizedUrl.contains(".eac3") -> MimeTypes.AUDIO_E_AC3
-                normalizedUrl.contains(".dts") -> MimeTypes.AUDIO_DTS
-                normalizedUrl.contains(".mka") -> MimeTypes.AUDIO_MATROSKA
-                else -> null
-            }
+        return when {
+            normalizedUrl.contains(".mkv") -> MimeTypes.VIDEO_MATROSKA
+            normalizedUrl.contains(".webm") -> MimeTypes.VIDEO_WEBM
+            normalizedUrl.contains(".mov") -> MimeTypes.VIDEO_QUICK_TIME
+            normalizedUrl.contains(".mp4") || normalizedUrl.contains(".m4v") -> MimeTypes.VIDEO_MP4
+            normalizedUrl.contains(".avi") -> MimeTypes.VIDEO_AVI
+            normalizedUrl.contains(".flv") -> MimeTypes.VIDEO_FLV
+            normalizedUrl.contains(".ts") || normalizedUrl.contains(".m2ts") || normalizedUrl.contains(".mts") -> MimeTypes.VIDEO_MP2T
+            normalizedUrl.contains(".mpg") || normalizedUrl.contains(".mpeg") -> MimeTypes.VIDEO_MPEG
+            normalizedUrl.contains(".ogv") -> MimeTypes.VIDEO_OGG
+            normalizedUrl.contains(".flac") -> MimeTypes.AUDIO_FLAC
+            normalizedUrl.contains(".mp3") -> MimeTypes.AUDIO_MPEG
+            normalizedUrl.contains(".m4a") || normalizedUrl.contains(".aac") -> MimeTypes.AUDIO_AAC
+            normalizedUrl.contains(".opus") -> MimeTypes.AUDIO_OPUS
+            normalizedUrl.contains(".ogg") || normalizedUrl.contains(".oga") -> MimeTypes.AUDIO_OGG
+            normalizedUrl.contains(".wav") || normalizedUrl.contains(".wave") -> MimeTypes.AUDIO_WAV
+            normalizedUrl.contains(".ac3") -> MimeTypes.AUDIO_AC3
+            normalizedUrl.contains(".eac3") -> MimeTypes.AUDIO_E_AC3
+            normalizedUrl.contains(".dts") -> MimeTypes.AUDIO_DTS
+            normalizedUrl.contains(".mka") -> MimeTypes.AUDIO_MATROSKA
+            else -> null
         }
-
-        return resolvedMimeType
     }
 
     private fun inferVideoMimeType(containerToken: String, mediaType: String?): String? {
